@@ -1,0 +1,16 @@
+# Binaries
+/clawmachine
+/cmd/clawmachine/clawmachine
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Go
+vendor/
