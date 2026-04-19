@@ -1,0 +1,10 @@
+services:
+  clawmachine:
+    build: .
+    command: ["-api-url", "http://host.docker.internal:5179", "-api-key", "${WAGMIOS_API_KEY}"]
+    environment:
+      - WAGMIOS_API_KEY=${WAGMIOS_API_KEY}
+    ports:
+      - "8080:8080"
+    # For stdio mode, use: docker run -i clawmachine -api-url ... -api-key ...
+    # For SSE mode, add: -transport sse -sse-addr :8080 -sse-base-url http://localhost:8080
