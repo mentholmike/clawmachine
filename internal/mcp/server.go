@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -117,7 +118,11 @@ func (s *Server) Run(ctx context.Context) error {
 		return server.ServeStdio(s.mcpServer)
 	case "sse":
 		log.Printf("Starting ClawMachine MCP server (SSE) on %s", s.cfg.SSEAddr)
-		sseServer := server.NewSSEServer(s.mcpServer)
+		sseServer := server.NewSSEServer(s.mcpServer,
+			server.WithBaseURL(s.cfg.SSEBaseURL),
+			server.WithKeepAlive(true),
+			server.WithKeepAliveInterval(30*time.Second),
+		)
 		return sseServer.Start(s.cfg.SSEAddr)
 	default:
 		return fmt.Errorf("unknown transport: %s (use 'stdio' or 'sse')", s.cfg.Transport)

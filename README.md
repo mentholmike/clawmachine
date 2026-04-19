@@ -1,15 +1,15 @@
 # ClawMachine
 
-**Give any AI a homelab.** MCP server for [WAGMIOS](https://github.com/mentholmike/wagmios) — exposes WAGMIOS Docker management as Model Context Protocol tools.
+**Give any AI a homelab.** MCP server for [WAGMIOS](https://github.com/mentholmike/wagmios) — exposes Docker management as Model Context Protocol tools.
 
 Works with Claude, ChatGPT, Cursor, VS Code Copilot, and any MCP-compatible client.
 
 ## How It Works
 
 ```
-AI Client (Claude, ChatGPT, etc.)
+AI Client (Claude, ChatGPT, Cursor, etc.)
         │
-        ▼ MCP Protocol (stdio/SSE)
+        ▼ MCP Protocol (stdio / SSE)
 ┌─────────────────┐
 │   ClawMachine   │  ← This repo
 │   MCP Server    │
@@ -32,22 +32,50 @@ go install github.com/mentholmike/clawmachine/cmd/clawmachine@latest
 
 ## Usage
 
-### stdio (local clients like Claude Code, Cursor)
+### Single Instance (stdio)
 
 ```bash
 clawmachine -api-url http://localhost:5179 -api-key wag_live_yourkey
 ```
 
-### SSE (remote clients)
+### Single Instance (SSE / remote)
 
 ```bash
-clawmachine -api-url http://localhost:5179 -api-key wag_live_yourkey -transport sse -sse-addr :8080
+clawmachine -api-url http://localhost:5179 -api-key wag_live_yourkey \
+  -transport sse -sse-addr :8080 -sse-base-url http://localhost:8080
 ```
+
+### Multi-Instance
+
+Manage multiple machines from one MCP server:
+
+```bash
+clawmachine -config config.json -transport sse -sse-addr :8080 -sse-base-url http://localhost:8080
+```
+
+Config file (`config.json`):
+```json
+{
+  "instances": {
+    "nas": {
+      "url": "http://192.168.1.10:5179",
+      "key": "wag_live_xxxxxxxxxxxx",
+      "label": "Homelab NAS"
+    },
+    "vps": {
+      "url": "https://vps.example.com:5179",
+      "key": "wag_live_yyyyyyyyyyyy",
+      "label": "VPS"
+    }
+  }
+}
+```
+
+In multi-instance mode, every tool gets a `host` parameter to route to the right machine. `list_hosts` shows all configured instances with their scopes.
 
 ### Environment Variables
 
-Flags can also be set via environment variables:
-
+Flags can also be set via env vars:
 - `WAGMIOS_API_URL` — WAGMIOS backend URL
 - `WAGMIOS_API_KEY` — WAGMIOS API key
 
@@ -92,6 +120,12 @@ Tools are dynamically registered based on your API key's scopes:
 | `marketplace:read` | `browse_marketplace`, `get_marketplace_app`, `list_installed_apps` |
 | `marketplace:write` | `install_app`, `start_app` |
 
+### Multi-Instance
+
+In multi-instance mode, all tools gain a `host` parameter plus an extra `list_hosts` tool:
+- `list_hosts` — show all configured instances with labels and scopes
+- Every other tool routes to the specified host and validates its scopes
+
 ### Example: Install Jellyfin
 
 ```
@@ -103,19 +137,15 @@ User: "Install Jellyfin on my homelab"
 ✓ Jellyfin is installed and running on port 8096
 ```
 
-## Multi-Machine
+### Example: Multi-Machine
 
-Point ClawMachine at different WAGMIOS instances for different machines:
-
-```bash
-# NAS
-clawmachine -api-url http://192.168.1.10:5179 -api-key $NAS_KEY
-
-# VPS
-clawmachine -api-url https://vps.example.com:5179 -api-key $VPS_KEY
 ```
+User: "Restart Nginx on the NAS and check images on the VPS"
 
-Each instance gets its own tools based on that machine's key scopes.
+→ restart_container(host="nas", id="nginx-proxy")
+→ list_images(host="vps")
+✓ Nginx restarted on NAS. VPS has 5 images.
+```
 
 ## Development
 
@@ -123,6 +153,18 @@ Each instance gets its own tools based on that machine's key scopes.
 git clone https://github.com/mentholmike/clawmachine.git
 cd clawmachine
 go build ./cmd/clawmachine/
+go test ./...
+```
+
+## Architecture
+
+```
+cmd/clawmachine/main.go    Entry point, flag parsing
+internal/config/           Configuration (single + multi-instance)
+internal/wagmios/          WAGMIOS REST API client
+internal/mcp/              MCP server (single + multi-instance)
+  server.go                 Single-instance MCP server
+  multi.go                  Multi-instance MCP server
 ```
 
 ## License

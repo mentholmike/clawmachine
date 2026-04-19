@@ -1,0 +1,19 @@
+{
+  "instances": {
+    "nas": {
+      "url": "http://192.168.1.10:5179",
+      "key": "wag_live_xxxxxxxxxxxx",
+      "label": "Homelab NAS"
+    },
+    "media": {
+      "url": "http://192.168.1.20:5179",
+      "key": "wag_live_yyyyyyyyyyyy",
+      "label": "Media Server"
+    },
+    "vps": {
+      "url": "https://vps.yourdomain.com:5179",
+      "key": "wag_live_zzzzzzzzzzzz",
+      "label": "VPS"
+    }
+  }
+}
