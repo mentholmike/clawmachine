@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -240,7 +241,7 @@ func (c *Client) ListContainers() ([]Container, error) {
 
 // GetContainerLogs returns container log output.
 func (c *Client) GetContainerLogs(id string, tail int) (string, error) {
-	path := fmt.Sprintf("/api/containers/%s/logs?tail=%d", id, tail)
+	path := fmt.Sprintf("/api/containers/%s/logs?tail=%d", url.PathEscape(id), tail)
 	resp, err := c.Get(path)
 	if err != nil {
 		return "", err
@@ -254,7 +255,7 @@ func (c *Client) GetContainerLogs(id string, tail int) (string, error) {
 
 // GetContainerConfig returns the full container configuration.
 func (c *Client) GetContainerConfig(id string) (json.RawMessage, error) {
-	resp, err := c.Get(fmt.Sprintf("/api/containers/%s/config", id))
+	resp, err := c.Get(fmt.Sprintf("/api/containers/%s/config", url.PathEscape(id)))
 	if err != nil {
 		return nil, err
 	}
@@ -263,25 +264,25 @@ func (c *Client) GetContainerConfig(id string) (json.RawMessage, error) {
 
 // StartContainer starts a container.
 func (c *Client) StartContainer(id string) error {
-	_, err := c.Post(fmt.Sprintf("/api/containers/%s/start", id), nil)
+	_, err := c.Post(fmt.Sprintf("/api/containers/%s/start", url.PathEscape(id)), nil)
 	return err
 }
 
 // StopContainer stops a container.
 func (c *Client) StopContainer(id string) error {
-	_, err := c.Post(fmt.Sprintf("/api/containers/%s/stop", id), nil)
+	_, err := c.Post(fmt.Sprintf("/api/containers/%s/stop", url.PathEscape(id)), nil)
 	return err
 }
 
 // RestartContainer restarts a container.
 func (c *Client) RestartContainer(id string) error {
-	_, err := c.Post(fmt.Sprintf("/api/containers/%s/restart", id), nil)
+	_, err := c.Post(fmt.Sprintf("/api/containers/%s/restart", url.PathEscape(id)), nil)
 	return err
 }
 
 // DeleteContainer deletes a container.
 func (c *Client) DeleteContainer(id string) error {
-	_, err := c.Delete(fmt.Sprintf("/api/containers/%s/delete", id))
+	_, err := c.Delete(fmt.Sprintf("/api/containers/%s/delete", url.PathEscape(id)))
 	return err
 }
 
@@ -319,7 +320,7 @@ func (c *Client) PullImage(image string) error {
 
 // DeleteImage deletes a Docker image.
 func (c *Client) DeleteImage(id string) error {
-	_, err := c.Delete(fmt.Sprintf("/api/images/%s", id))
+	_, err := c.Delete(fmt.Sprintf("/api/images/%s", url.PathEscape(id)))
 	return err
 }
 
@@ -338,7 +339,7 @@ func (c *Client) BrowseMarketplace() ([]MarketplaceApp, error) {
 
 // GetMarketplaceApp returns details for a specific app.
 func (c *Client) GetMarketplaceApp(appID string) (*MarketplaceApp, error) {
-	resp, err := c.Get(fmt.Sprintf("/api/marketplace/%s", appID))
+	resp, err := c.Get(fmt.Sprintf("/api/marketplace/%s", url.PathEscape(appID)))
 	if err != nil {
 		return nil, err
 	}

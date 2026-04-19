@@ -38,12 +38,12 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 			os.Exit(1)
 		}
-		server, err := mcp.NewMultiServer(multiCfg, *transport, *sseAddr, *sseBaseURL)
+		srv, err := mcp.NewMultiServer(multiCfg)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		if err := server.Run(ctx, *transport, *sseAddr, *sseBaseURL); err != nil {
+		if err := srv.Run(ctx, *transport, *sseAddr, *sseBaseURL); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
 		return
@@ -72,12 +72,12 @@ func main() {
 		SSEBaseURL: *sseBaseURL,
 	}
 
-	server, err := mcp.NewServer(cfg)
+	srv, err := mcp.NewServer(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	if err := server.Run(ctx); err != nil {
+	if err := srv.Run(ctx); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
 }
