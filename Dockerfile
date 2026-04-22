@@ -7,7 +7,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -o clawmachine ./cmd/clawmachine/
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -ldflags "-X main.version=${VERSION}" -o clawmachine ./cmd/clawmachine/
 
 # Runtime stage
 FROM alpine:3.21

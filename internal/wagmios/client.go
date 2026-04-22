@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -185,6 +186,19 @@ func (c *Client) doRequest(method, path string, body interface{}) (*APIResponse,
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
 	defer resp.Body.Close()
+
+	// Check HTTP status before attempting JSON decode
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		bodyBytes, readErr := io.ReadAll(io.LimitReader(resp.Body, 512))
+		// Drain remaining body for connection reuse
+		if _, drainErr := io.Copy(io.Discard, resp.Body); drainErr != nil {
+			log.Printf("warn: failed to drain response body: %v", drainErr)
+		}
+		if readErr != nil {
+			return nil, fmt.Errorf("HTTP %d: failed to read error body: %w", resp.StatusCode, readErr)
+		}
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
+	}
 
 	var apiResp APIResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {

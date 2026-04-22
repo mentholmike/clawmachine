@@ -21,14 +21,16 @@ type MultiServer struct {
 	scopes    map[string][]string
 	labels    map[string]string
 	hostNames []string
+	version   string
 }
 
 // NewMultiServer creates a new multi-instance ClawMachine MCP server.
-func NewMultiServer(multiCfg *config.MultiConfig) (*MultiServer, error) {
+func NewMultiServer(multiCfg *config.MultiConfig, version string) (*MultiServer, error) {
 	s := &MultiServer{
 		clients: make(map[string]*wagmios.Client),
 		scopes:  make(map[string][]string),
 		labels:  make(map[string]string),
+		version: version,
 	}
 
 	// Initialize a WAGMIOS client for each instance and fetch scopes
@@ -52,7 +54,7 @@ func NewMultiServer(multiCfg *config.MultiConfig) (*MultiServer, error) {
 
 	s.mcpServer = server.NewMCPServer(
 		"ClawMachine",
-		"0.1.0",
+		version,
 		server.WithToolCapabilities(false),
 	)
 
@@ -113,7 +115,7 @@ func (s *MultiServer) anyHostHasScope(scope string) bool {
 // Run starts the multi-instance MCP server.
 func (s *MultiServer) Run(ctx context.Context, transport, sseAddr, sseBaseURL string) error {
 	log.Printf("Starting ClawMachine MCP server (multi-instance, %s)", transport)
-	return runTransport(s.mcpServer, transport, sseAddr, sseBaseURL)
+	return runTransport(ctx, s.mcpServer, transport, sseAddr, sseBaseURL, s.version)
 }
 
 // addListHostsTool registers the list_hosts tool (only in multi-instance mode).

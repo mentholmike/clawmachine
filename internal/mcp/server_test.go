@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -151,9 +152,186 @@ func TestMultiServer_resolveClient_scopeValidation(t *testing.T) {
 }
 
 func TestRunTransport_unknownTransport(t *testing.T) {
-	err := runTransport(nil, "invalid", "", "")
+	err := runTransport(context.Background(), nil, "invalid", "", "", "")
 	if err == nil {
 		t.Error("expected error for unknown transport")
+	}
+}
+
+func TestParsePorts(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     interface{}
+		expected  []wagmios.Port
+		expectErr bool
+	}{
+		{
+			name: "valid array of ports",
+			input: []interface{}{
+				map[string]interface{}{"private": float64(80), "public": float64(8080), "protocol": "tcp"},
+				map[string]interface{}{"private": float64(443), "public": float64(8443), "protocol": "tcp"},
+			},
+			expected: []wagmios.Port{
+				{Private: 80, Public: 8080, Protocol: "tcp"},
+				{Private: 443, Public: 8443, Protocol: "tcp"},
+			},
+		},
+		{
+			name:     "nil input",
+			input:    nil,
+			expected: nil,
+		},
+		{
+			name:      "not an array",
+			input:     "not-an-array",
+			expectErr: true,
+		},
+		{
+			name: "missing optional fields",
+			input: []interface{}{
+				map[string]interface{}{"private": float64(22)},
+			},
+			expected: []wagmios.Port{
+				{Private: 22},
+			},
+		},
+		{
+			name: "invalid port out of range",
+			input: []interface{}{
+				map[string]interface{}{"private": float64(70000), "public": float64(80)},
+			},
+			expectErr: true,
+		},
+		{
+			name: "negative port",
+			input: []interface{}{
+				map[string]interface{}{"private": float64(-1)},
+			},
+			expectErr: true,
+		},
+		{
+			name: "missing required private",
+			input: []interface{}{
+				map[string]interface{}{"public": float64(80)},
+			},
+			expectErr: true,
+		},
+		{
+			name: "wrong type for private",
+			input: []interface{}{
+				map[string]interface{}{"private": "eighty"},
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parsePorts(tt.input)
+			if tt.expectErr {
+				if err == nil {
+					t.Errorf("parsePorts() expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("parsePorts() unexpected error: %v", err)
+				return
+			}
+			if len(got) != len(tt.expected) {
+				t.Errorf("parsePorts() returned %d ports, want %d", len(got), len(tt.expected))
+				return
+			}
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("parsePorts()[%d] = %+v, want %+v", i, got[i], tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestParseVolumes(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     interface{}
+		expected  []wagmios.Volume
+		expectErr bool
+	}{
+		{
+			name: "valid array of volumes",
+			input: []interface{}{
+				map[string]interface{}{"host": "/data", "container": "/app/data"},
+				map[string]interface{}{"host": "/config", "container": "/etc/app"},
+			},
+			expected: []wagmios.Volume{
+				{Host: "/data", Container: "/app/data"},
+				{Host: "/config", Container: "/etc/app"},
+			},
+		},
+		{
+			name:     "nil input",
+			input:    nil,
+			expected: nil,
+		},
+		{
+			name:      "not an array",
+			input:     42,
+			expectErr: true,
+		},
+		{
+			name: "missing container",
+			input: []interface{}{
+				map[string]interface{}{"host": "/data"},
+			},
+			expectErr: true,
+		},
+		{
+			name: "missing host",
+			input: []interface{}{
+				map[string]interface{}{"container": "/var/log"},
+			},
+			expectErr: true,
+		},
+		{
+			name: "wrong type for host",
+			input: []interface{}{
+				map[string]interface{}{"host": 123, "container": "/app"},
+			},
+			expectErr: true,
+		},
+		{
+			name: "not an object in array",
+			input: []interface{}{
+				42,
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseVolumes(tt.input)
+			if tt.expectErr {
+				if err == nil {
+					t.Errorf("parseVolumes() expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("parseVolumes() unexpected error: %v", err)
+				return
+			}
+			if len(got) != len(tt.expected) {
+				t.Errorf("parseVolumes() returned %d volumes, want %d", len(got), len(tt.expected))
+				return
+			}
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("parseVolumes()[%d] = %+v, want %+v", i, got[i], tt.expected[i])
+				}
+			}
+		})
 	}
 }
 
@@ -164,7 +342,7 @@ func TestNewServer_singleInstance(t *testing.T) {
 		APIKey:    "test-key",
 		Transport: "stdio",
 	}
-	srv, err := NewServer(cfg)
+	srv, err := NewServer(cfg, "dev")
 	if err == nil && srv == nil {
 		t.Error("expected either error or valid server")
 	}

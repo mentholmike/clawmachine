@@ -13,6 +13,8 @@ import (
 	"github.com/mentholmike/clawmachine/internal/mcp"
 )
 
+var version = "dev" // overridden at build time with -ldflags
+
 func main() {
 	// Single-instance flags
 	apiURL := flag.String("api-url", "", "WAGMIOS API base URL (single-instance mode)")
@@ -38,13 +40,14 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 			os.Exit(1)
 		}
-		srv, err := mcp.NewMultiServer(multiCfg)
+		srv, err := mcp.NewMultiServer(multiCfg, version)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 		if err := srv.Run(ctx, *transport, *sseAddr, *sseBaseURL); err != nil {
-			log.Fatalf("Server error: %v", err)
+			log.Printf("Server error: %v", err)
+			os.Exit(1)
 		}
 		return
 	}
@@ -72,12 +75,13 @@ func main() {
 		SSEBaseURL: *sseBaseURL,
 	}
 
-	srv, err := mcp.NewServer(cfg)
+	srv, err := mcp.NewServer(cfg, version)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 	if err := srv.Run(ctx); err != nil {
-		log.Fatalf("Server error: %v", err)
+		log.Printf("Server error: %v", err)
+		os.Exit(1)
 	}
 }

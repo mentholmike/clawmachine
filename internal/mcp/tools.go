@@ -342,6 +342,20 @@ func addCreateContainerTool(s *server.MCPServer, getClient clientGetter, hostOpt
 					}
 				}
 			}
+			if ports, ok := args["ports"]; ok {
+				parsedPorts, err := parsePorts(ports)
+				if err != nil {
+					return mcp.NewToolResultError(fmt.Sprintf("Invalid ports: %v", err)), nil
+				}
+				createReq.Ports = parsedPorts
+			}
+			if volumes, ok := args["volumes"]; ok {
+				parsedVolumes, err := parseVolumes(volumes)
+				if err != nil {
+					return mcp.NewToolResultError(fmt.Sprintf("Invalid volumes: %v", err)), nil
+				}
+				createReq.Volumes = parsedVolumes
+			}
 		}
 		container, err := client.CreateContainer(createReq)
 		if err != nil {
@@ -629,4 +643,97 @@ func addStartMarketplaceAppTool(s *server.MCPServer, getClient clientGetter, hos
 		}
 		return mcp.NewToolResultText(fmt.Sprintf("App %s started", appID)), nil
 	})
+}
+
+// parsePorts extracts a slice of Port from an untyped interface{}.
+// Expects an array of objects: [{"private": 80, "public": 8080, "protocol": "tcp"}, ...]
+// Returns an error for malformed entries or invalid port numbers.
+func parsePorts(raw interface{}) ([]wagmios.Port, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	arr, ok := raw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected array, got %T", raw)
+	}
+	ports := make([]wagmios.Port, 0, len(arr))
+	for i, item := range arr {
+		obj, ok := item.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("ports[%d]: expected object, got %T", i, item)
+		}
+		var p wagmios.Port
+		if v, ok := obj["private"]; ok {
+			if vf, ok := v.(float64); ok {
+				p.Private = int(vf)
+			} else {
+				return nil, fmt.Errorf("ports[%d].private: expected number, got %T", i, v)
+			}
+		} else {
+			return nil, fmt.Errorf("ports[%d]: missing required field 'private'", i)
+		}
+		if v, ok := obj["public"]; ok {
+			if vf, ok := v.(float64); ok {
+				p.Public = int(vf)
+			} else {
+				return nil, fmt.Errorf("ports[%d].public: expected number, got %T", i, v)
+			}
+		}
+		if v, ok := obj["protocol"]; ok {
+			if vs, ok := v.(string); ok {
+				p.Protocol = vs
+			} else {
+				return nil, fmt.Errorf("ports[%d].protocol: expected string, got %T", i, v)
+			}
+		}
+		if p.Private < 1 || p.Private > 65535 {
+			return nil, fmt.Errorf("ports[%d].private: %d is not a valid port (1-65535)", i, p.Private)
+		}
+		if p.Public != 0 && (p.Public < 1 || p.Public > 65535) {
+			return nil, fmt.Errorf("ports[%d].public: %d is not a valid port (1-65535)", i, p.Public)
+		}
+		ports = append(ports, p)
+	}
+	return ports, nil
+}
+
+// parseVolumes extracts a slice of Volume from an untyped interface{}.
+// Expects an array of objects: [{"host": "/data", "container": "/app/data"}, ...]
+// Returns an error for malformed entries.
+func parseVolumes(raw interface{}) ([]wagmios.Volume, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	arr, ok := raw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected array, got %T", raw)
+	}
+	volumes := make([]wagmios.Volume, 0, len(arr))
+	for i, item := range arr {
+		obj, ok := item.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("volumes[%d]: expected object, got %T", i, item)
+		}
+		var v wagmios.Volume
+		if val, ok := obj["host"]; ok {
+			if vs, ok := val.(string); ok {
+				v.Host = vs
+			} else {
+				return nil, fmt.Errorf("volumes[%d].host: expected string, got %T", i, val)
+			}
+		} else {
+			return nil, fmt.Errorf("volumes[%d]: missing required field 'host'", i)
+		}
+		if val, ok := obj["container"]; ok {
+			if vs, ok := val.(string); ok {
+				v.Container = vs
+			} else {
+				return nil, fmt.Errorf("volumes[%d].container: expected string, got %T", i, val)
+			}
+		} else {
+			return nil, fmt.Errorf("volumes[%d]: missing required field 'container'", i)
+		}
+		volumes = append(volumes, v)
+	}
+	return volumes, nil
 }
