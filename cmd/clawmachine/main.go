@@ -16,6 +16,9 @@ import (
 var version = "dev" // overridden at build time with -ldflags
 
 func main() {
+	// Version flag
+	showVersion := flag.Bool("version", false, "Print version and exit")
+
 	// Single-instance flags
 	apiURL := flag.String("api-url", "", "WAGMIOS API base URL (single-instance mode)")
 	apiKey := flag.String("api-key", "", "WAGMIOS API key (single-instance mode)")
@@ -29,6 +32,11 @@ func main() {
 	sseBaseURL := flag.String("sse-base-url", "", "Base URL for SSE transport (needed for remote clients)")
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
